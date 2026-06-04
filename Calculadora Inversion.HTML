@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Dinámica de Inversión a Largo Plazo</title>
+    <style>
+        /* Definición de variables de color por defecto (Tema Claro) */
+        :root {
+            --bg-color: #f4f7f6;
+            --container-bg: #ffffff;
+            --text-main: #333333;
+            --text-muted: #64748b;
+            --heading-color: #1a365d;
+            --section-bg: #f8fafc;
+            --section-border: #e2e8f0;
+            --input-border: #cbd5e1;
+            --input-bg: #ffffff;
+            --label-color: #2d3748;
+            --result-bg: #1a365d;
+            --result-text: #ffffff;
+            --accent-color: #38bdf8;
+            --breakdown-bg: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Paleta de colores para el Tema Oscuro */
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --container-bg: #1e293b;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --heading-color: #38bdf8;
+            --section-bg: #334155;
+            --section-border: #475569;
+            --input-border: #475569;
+            --input-bg: #1e293b;
+            --label-color: #cbd5e1;
+            --result-bg: #0f172a;
+            --result-text: #f1f5f9;
+            --accent-color: #34d399;
+            --breakdown-bg: rgba(255, 255, 255, 0.05);
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-main); 
+            margin: 0; 
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        .container { 
+            max-width: 800px; 
+            background: var(--container-bg); 
+            margin: 0 auto; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            position: relative;
+        }
+
+        .theme-toggle-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+        .theme-btn {
+            background: var(--section-bg);
+            border: 1px solid var(--section-border);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .theme-btn:hover {
+            opacity: 0.9;
+        }
+
+        h1 { text-align: center; color: var(--heading-color); margin-bottom: 30px; }
+        .section { margin-bottom: 25px; padding: 15px; border-radius: 8px; background-color: var(--section-bg); border: 1px solid var(--section-border); }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        label { font-weight: bold; display: block; margin-bottom: 8px; color: var(--label-color); }
+        input[type="number"], select { width: 100%; padding: 10px; border: 1px solid var(--input-border); background-color: var(--input-bg); color: var(--text-main); border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        .slider-group { margin-bottom: 15px; }
+        .slider-label { display: flex; justify-content: space-between; font-weight: bold; }
+        input[type="range"] { width: 100%; margin-top: 8px; }
+        .result-box { background: var(--result-bg); color: var(--result-text); text-align: center; padding: 25px; border-radius: 10px; margin-top: 30px; }
+        .result-box h2 { margin: 0; font-size: 1.5rem; opacity: 0.9; }
+        .result-amount { font-size: 3rem; font-weight: bold; margin: 10px 0; color: var(--accent-color); }
+        .breakdown { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 15px; text-align: center; font-size: 0.9rem; }
+        .breakdown-item { background: var(--breakdown-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--section-border); }
+        .error-msg { color: #dc2626; font-weight: bold; text-align: center; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="theme-toggle-container">
+        <button class="theme-btn" id="themeToggle" onclick="toggleTheme()">🌙 Modo Oscuro</button>
+    </div>
+
+    <h1>📊 Calculadora Dinámica de Inversión</h1>
+
+    <div class="section grid">
+        <div>
+            <label for="initCapital">Capital Inicial Total (ARS):</label>
+            <input type="number" id="initCapital" placeholder="Ej: 500000" oninput="calculate()">
+        </div>
+        <div>
+            <label for="monthlyAporte">Aporte Mensual Total (ARS):</label>
+            <input type="number" id="monthlyAporte" placeholder="Ej: 50000" oninput="calculate()">
+        </div>
+    </div>
+
+    <div class="section">
+        <label for="usdRate">Dólar Estimado (CCL/MEP):</label>
+        <input type="number" id="usdRate" placeholder="Ej: 1250" oninput="calculate()" style="width: 50%;">
+        <span style="font-size: 0.85rem; color: var(--text-muted); margin-left:10px;">*Para convertir tus pesos a dólares constantes.</span>
+    </div>
+
+    <div class="section slider-group">
+        <div class="slider-label">
+            <span>Plazo de la Inversión:</span>
+            <span id="yearsVal" style="color: var(--heading-color); font-size: 1.2rem;">1 año</span>
+        </div>
+        <input type="range" id="years" min="1" max="40" value="1" oninput="calculate()">
+    </div>
+
+    <div class="section">
+        <label style="margin-bottom: 15px; border-bottom: 2px solid var(--section-border); padding-bottom: 5px;">Distribución de la Cartera (Recomendado: 100%)</label>
+        
+        <div class="slider-group">
+            <div class="slider-label"><span>S&P 500 (SPY) - Rinde ~8% anual:</span> <span id="pSpyVal">0%</span></div>
+            <input type="range" id="pSpy" min="0" max="100" value="0" oninput="adjustSliders('pSpy')">
+        </div>
+        
+        <div class="slider-group">
+            <div class="slider-label"><span>Nasdaq (QQQ) - Rinde ~9.5% anual:</span> <span id="pQqqVal">0%</span></div>
+            <input type="range" id="pQqq" min="0" max="100" value="0" oninput="adjustSliders('pQqq')">
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-label"><span>Chips (NVDA/AMD) - Rinde ~10.5% anual:</span> <span id="pChipsVal">0%</span></div>
+            <input type="range" id="pChips" min="0" max="100" value="0" oninput="adjustSliders('pChips')">
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-label"><span>Fima Renta Plus - Rinde ~3% anual:</span> <span id="pFimaVal">0%</span></div>
+            <input type="range" id="pFima" min="0" max="100" value="0" oninput="adjustSliders('pFima')">
+        </div>
+
+        <div id="errorTotal" class="error-msg" style="display: block;">⚠️ Los porcentajes suman 0%. Ajustalos para llegar exactamente al 100%.</div>
+    </div>
+
+    <div class="result-box">
+        <h2>Capital Final Estimado (Poder de compra real)</h2>
+        <div id="totalUSD" class="result-amount">$0 USD</div>
+        <div id="totalARS" style="font-size: 1.2rem; opacity: 0.8; margin-bottom: 15px;">($0 ARS de hoy)</div>
+        
+        <div class="breakdown">
+            <div class="breakdown-item"><div>SPY</div><b id="resSpy">$0</b></div>
+            <div class="breakdown-item"><div>QQQ</div><b id="resQqq">$0</b></div>
+            <div class="breakdown-item"><div>Chips</div><b id="resChips">$0</b></div>
+            <div class="breakdown-item"><div>Fima</div><b id="resFima">$0</b></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Tasas anuales estimadas (en dólares netos de inflación)
+const rates = { spy: 0.08, qqq: 0.095, chips: 0.105, fima: 0.03 };
+
+// --- LÓGICA DEL TEMA OSCURO ---
+function toggleTheme() {
+    const html = document.documentElement;
+    const btn = document.getElementById('themeToggle');
+    
+    if (html.getAttribute('data-theme') === 'dark') {
+        html.removeAttribute('data-theme');
+        btn.innerText = '🌙 Modo Oscuro';
+    } else {
+        html.setAttribute('data-theme', 'dark');
+        btn.innerText = '☀️ Modo Claro';
+    }
+}
+
+function adjustSliders(changed) {
+    let spy = parseInt(document.getElementById('pSpy').value);
+    let qqq = parseInt(document.getElementById('pQqq').value);
+    let chips = parseInt(document.getElementById('pChips').value);
+    let fima = parseInt(document.getElementById('pFima').value);
+    
+    let total = spy + qqq + chips + fima;
+    const errorDiv = document.getElementById('errorTotal');
+    
+    if(total !== 100) {
+        errorDiv.style.display = 'block';
+        errorDiv.innerText = `⚠️ Los porcentajes suman ${total}%. Lo ideal es que lleguen a 100%.`;
+    } else {
+        errorDiv.style.display = 'none';
+    }
+
+    document.getElementById('pSpyVal').innerText = spy + '%';
+    document.getElementById('pQqqVal').innerText = qqq + '%';
+    document.getElementById('pChipsVal').innerText = chips + '%';
+    document.getElementById('pFimaVal').innerText = fima + '%';
+
+    calculate();
+}
+
+function futureValue(p, pmt, r, textYears) {
+    if (p === 0 && pmt === 0) return 0;
+    
+    let months = textYears * 12;
+    let rMonthly = Math.pow(1 + r, 1/12) - 1;
+    
+    // Interés compuesto del capital inicial
+    let fvInitial = p * Math.pow(1 + rMonthly, months);
+    // Interés compuesto de los aportes mensuales
+    let fvAnnuity = pmt * ((Math.pow(1 + rMonthly, months) - 1) / rMonthly);
+    
+    return fvInitial + fvAnnuity;
+}
+
+function calculate() {
+    const initCapitalARS = parseFloat(document.getElementById('initCapital').value) || 0;
+    const monthlyAporteARS = parseFloat(document.getElementById('monthlyAporte').value) || 0;
+    const usdRate = parseFloat(document.getElementById('usdRate').value) || 0;
+    const years = parseInt(document.getElementById('years').value);
+    
+    document.getElementById('yearsVal').innerText = years + (years === 1 ? ' año' : ' años');
+
+    let resSpy = 0, resQqq = 0, resChips = 0, resFima = 0;
+    let totalUSD = 0;
+    let totalARS = 0;
+
+    // Solo calcula si se ingresó un valor de dólar válido mayor a cero
+    if (usdRate > 0) {
+        const initCapitalUSD = initCapitalARS / usdRate;
+        const monthlyAporteUSD = monthlyAporteARS / usdRate;
+
+        let spy = parseInt(document.getElementById('pSpy').value);
+        let qqq = parseInt(document.getElementById('pQqq').value);
+        let chips = parseInt(document.getElementById('pChips').value);
+        let fima = parseInt(document.getElementById('pFima').value);
+        
+        // Calcula siempre de forma libre
+        resSpy = futureValue(initCapitalUSD * (spy / 100), monthlyAporteUSD * (spy / 100), rates.spy, years);
+        resQqq = futureValue(initCapitalUSD * (qqq / 100), monthlyAporteUSD * (qqq / 100), rates.qqq, years);
+        resChips = futureValue(initCapitalUSD * (chips / 100), monthlyAporteUSD * (chips / 100), rates.chips, years);
+        resFima = futureValue(initCapitalUSD * (fima / 100), monthlyAporteUSD * (fima / 100), rates.fima, years);
+
+        totalUSD = resSpy + resQqq + resChips + resFima;
+        totalARS = totalUSD * usdRate;
+    }
+
+    document.getElementById('totalUSD').innerText = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(totalUSD);
+    document.getElementById('totalARS').innerText = '(' + new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(totalARS) + ' de hoy)';
+    
+    document.getElementById('resSpy').innerText = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(resSpy);
+    document.getElementById('resQqq').innerText = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(resQqq);
+    document.getElementById('resChips').innerText = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(resChips);
+    document.getElementById('resFima').innerText = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(resFima);
+}
+
+// Inicialización limpia
+calculate();
+</script>
+</body>
+</html>
